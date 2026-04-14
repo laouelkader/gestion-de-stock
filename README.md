@@ -1,210 +1,194 @@
-# Projet gestion de stock — guide Docker (très simple)
+# Gestion de stock
 
-Ce fichier explique **comment lancer le projet avec Docker**, étape par étape, sans supposer que tu connais déjà Docker.
+Application web de **gestion d’inventaire** : produits, catégories, fournisseurs, mouvements de stock (entrées / sorties / ajustements), tableau de bord, rapports de ventes (graphiques + export PDF) et export CSV.  
+**Backend** [FastAPI](https://fastapi.tiangolo.com/) + **MySQL** (ou SQLite en local) · **Frontend** [React](https://react.dev/) + [Vite](https://vitejs.dev/) · **Déploiement** prêt pour [Docker](https://www.docker.com/).
 
----
-
-## 1. C’est quoi Docker, en deux phrases ?
-
-Imagine **trois boîtes** qui tournent sur ton ordinateur :
-
-1. **MySQL** — la base de données (là où sont stockées les infos : produits, catégories, etc.).
-2. **Backend** — le programme Python (FastAPI) qui parle à la base et répond aux demandes de l’appli.
-3. **Frontend** — la page web (React) que tu vois dans le navigateur.
-
-Docker sert à **lancer ces trois boîtes ensemble**, avec les bons réglages, sans tout installer à la main sur ta machine.
+![Python](https://img.shields.io/badge/Python-3.12-blue)
+![React](https://img.shields.io/badge/React-19-61dafb)
+![Docker](https://img.shields.io/badge/Docker-Compose-2496ed)
 
 ---
 
-## 2. Ce qu’il te faut avant de commencer
+## Sommaire
 
-1. **Docker Desktop** installé sur Windows (ou Docker équivalent sur Mac/Linux).
-2. **Docker Desktop doit être démarré** (icône dans la barre des tâches, moteur « running »).
-
-Si Docker n’est pas lancé, la commande `docker compose` affichera une erreur du genre *pipe … not found*.
-
----
-
-## 3. Où se trouve le « mode d’emploi » Docker du projet ?
-
-À la **racine du dossier projet** (là où il y a `docker-compose.yml`), tu as :
-
-| Fichier | À quoi ça sert |
-|--------|----------------|
-| `docker-compose.yml` | La **liste des trois services** (mysql, backend, frontend) et comment ils se parlent. |
-| `backend/Dockerfile` | La **recette** pour construire l’image du backend (Python + ton code). |
-| `frontend/Dockerfile` | La **recette** pour construire le site web (build React + serveur nginx). |
-| `frontend/nginx.conf` | Les **règles du serveur web** : il affiche le site et envoie tout ce qui commence par `/api` vers le backend. |
-| `env.docker.example` | **Exemple** de variables (mots de passe, ports). Tu peux copier ça en `.env` si tu veux changer les défauts. |
+- [Fonctionnalités](#fonctionnalités)
+- [Architecture](#architecture)
+- [Structure du dépôt](#structure-du-dépôt)
+- [Démarrage rapide (Docker)](#démarrage-rapide-docker)
+- [Développement local (sans Docker)](#développement-local-sans-docker)
+- [Configuration](#configuration)
+- [API](#api)
+- [Publier sur GitHub](#publier-sur-github)
+- [Guide Docker détaillé (débutant)](#guide-docker-détaillé-débutant)
 
 ---
 
-## 4. Lancer le projet (la commande magique)
+## Fonctionnalités
 
-1. Ouvre un terminal (PowerShell ou CMD).
-2. Va dans le dossier du projet, par exemple :
-
-   ```text
-   cd "C:\Users\...\Desktop\projet docker"
-   ```
-
-3. Tape :
-
-   ```bash
-   docker compose up --build
-   ```
-
-   - **`up`** = démarre les boîtes.  
-   - **`--build`** = reconstruit les images si le code a changé (un peu plus long la première fois, c’est normal).
-
-4. Attends que ça affiche des lignes sans erreur rouge. Quand MySQL est « healthy » et que le backend écoute, c’est bon.
+| Domaine | Détail |
+|---------|--------|
+| **Produits** | SKU, quantité, seuil d’alerte, prix unitaire, catégorie, fournisseur ; recherche ; filtre stock bas ; export **CSV** |
+| **Catégories** | CRUD |
+| **Fournisseurs** | Coordonnées, liaison aux produits |
+| **Mouvements** | Entrée, sortie, ajustement ; historique |
+| **Tableau de bord** | Totaux, alertes stock bas, valeur stock estimée, activité 7 jours |
+| **Rapports ventes** | Basés sur les **sorties** de stock ; courbes (Recharts) ; export **PDF** |
+| **API** | OpenAPI / Swagger sur `/docs` |
 
 ---
 
-## 5. Ouvrir l’application dans le navigateur
-
-Par défaut :
-
-- **Site web (recommandé)** : [http://localhost:3000](http://localhost:3000)  
-  → C’est le **frontend** derrière nginx. Les appels à l’API passent en **interne** (même adresse, chemins `/api/...`).
-
-- **API seule (Swagger / tests)** : [http://localhost:8000/docs](http://localhost:8000/docs)  
-  → C’est le **backend** directement.
-
-- **MySQL depuis ton PC** (client SQL type DBeaver) :  
-  - Hôte : `localhost`  
-  - Port : **3306** (sauf si tu l’as changé dans `.env`)  
-  - Base : `stockdb`  
-  - Utilisateur / mot de passe : ceux définis dans `docker-compose` (voir section 7).
-
----
-
-## 6. Arrêter le projet
-
-Dans le terminal où `docker compose up` tourne : **Ctrl + C**.
-
-Pour arrêter **et** libérer les conteneurs (sans effacer la base MySQL dans le volume) :
-
-```bash
-docker compose down
-```
-
-Les **données MySQL** sont dans un **volume** Docker (`mysql_data`) : elles restent tant que tu ne supprimes pas ce volume volontairement.
-
----
-
-## 7. Mots de passe et noms par défaut (important)
-
-Si tu n’as pas créé de fichier `.env`, Docker utilise les valeurs par défaut du `docker-compose.yml`, en gros :
-
-- Base MySQL : **`stockdb`**
-- Utilisateur applicatif : **`stock`**
-- Mot de passe utilisateur : **`stocksecret`**
-- Mot de passe **root** MySQL : **`rootsecret`**
-
-Pour la prod, il faudrait des mots de passe **beaucoup plus forts** et un fichier `.env` **non partagé** sur internet.
-
-Tu peux copier `env.docker.example` vers `.env` à la racine et modifier les lignes, puis relancer `docker compose up --build`.
-
----
-
-## 8. Comment les trois boîtes se parlent (schéma mental)
+## Architecture
 
 ```text
-Toi (navigateur)
-    |
-    v
-localhost:3000  --->  [ nginx dans le conteneur "frontend" ]
-                              |
-                              |  /api/...  envoyé vers
-                              v
-                        [ conteneur "backend" : FastAPI ]
-                              |
-                              |  requêtes SQL vers
-                              v
-                        [ conteneur "mysql" ]
+┌─────────────┐     ┌─────────────┐     ┌─────────────┐
+│   React     │────▶│   nginx     │────▶│  FastAPI    │
+│  (navigateur)│     │  (frontend) │ /api│  (backend)  │
+└─────────────┘     └─────────────┘     └──────┬──────┘
+                                               │
+                                               ▼
+                                        ┌─────────────┐
+                                        │   MySQL     │
+                                        │  (données)  │
+                                        └─────────────┘
 ```
 
-À l’intérieur de Docker, le backend utilise une adresse du type **`mysql:3306`** (le nom du service dans `docker-compose.yml`), pas `localhost`, parce que pour lui « MySQL » c’est **l’autre conteneur**.
+En **Docker**, le navigateur appelle surtout **`http://localhost:3000`** : nginx sert le build React et **proxifie** `/api`, `/health`, `/docs` vers le conteneur backend.
 
 ---
 
-## 9. Erreurs fréquentes (tranquille, ça arrive à tout le monde)
+## Structure du dépôt
 
-| Symptôme | Piste |
-|----------|--------|
-| Erreur avec *pipe* / *dockerDesktopLinuxEngine* | Docker Desktop **n’est pas lancé**. Ouvre Docker et attends le démarrage complet. |
-| Le site affiche une erreur / ne charge pas l’API | Vérifie que les **trois** services sont « Up » (`docker compose ps`). Regarde les logs : `docker compose logs backend`. |
-| **502** sur `/api/...` ou le backend qui redémarre en boucle | Souvent le backend qui **plante au démarrage** (voir les logs). Après une mise à jour du code, refais `docker compose up --build`. |
-| Port déjà utilisé (3000, 8000 ou 3306) | Un autre programme utilise le port. Change `FRONTEND_PORT`, `BACKEND_PORT` ou `MYSQL_PORT` dans un fichier `.env` à la racine (voir `env.docker.example`). |
-| Première fois très longue | Normal : téléchargement des images + `npm ci` + build du frontend. |
+```text
+.
+├── backend/                 # API FastAPI
+│   ├── app/
+│   │   ├── main.py          # Application, CORS, routes
+│   │   ├── config.py        # Paramètres (DATABASE_URL, CORS…)
+│   │   ├── database.py      # SQLAlchemy + pool MySQL
+│   │   ├── models/          # ORM (produit, catégorie, fournisseur, mouvement)
+│   │   ├── routers/         # Endpoints REST
+│   │   ├── schemas/         # Pydantic
+│   │   └── services/        # Logique métier (ex. rapports ventes)
+│   ├── main.py              # Point d’entrée Uvicorn
+│   ├── Dockerfile
+│   └── requirements.txt
+├── frontend/                # SPA React + TypeScript
+│   ├── src/
+│   │   ├── pages/           # Écrans (produits, rapports…)
+│   │   ├── api/             # Client HTTP
+│   │   └── components/
+│   ├── Dockerfile
+│   └── nginx.conf           # Proxy vers l’API en prod Docker
+├── docs/
+│   └── GUIDE_DOCKER.md      # Guide pas à pas (très pédagogique)
+├── docker-compose.yml       # mysql + backend + frontend
+├── env.docker.example       # Exemple de variables d’environnement
+├── package.json             # Scripts npm (dev / docker à la racine)
+└── README.md                # Ce fichier
+```
 
 ---
 
-## 10. Commandes utiles (copier-coller)
+## Démarrage rapide (Docker)
+
+**Prérequis** : [Docker Desktop](https://www.docker.com/products/docker-desktop/) installé et **démarré**.
 
 ```bash
-# Démarrer (avec reconstruction des images)
+git clone https://github.com/VOTRE_USER/VOTRE_REPO.git
+cd VOTRE_REPO
 docker compose up --build
-
-# Démarrer en arrière-plan (tu récupères le terminal)
-docker compose up --build -d
-
-# Voir l’état des services
-docker compose ps
-
-# Voir les logs du backend seulement
-docker compose logs -f backend
-
-# Tout arrêter
-docker compose down
 ```
 
-À la racine du projet, tu peux aussi utiliser (si tu as fait `npm install` une fois à la racine) :
+Puis ouvre **http://localhost:3000** (interface) ou **http://localhost:8000/docs** (API).
 
-```bash
-npm run docker:up
-npm run docker:down
-```
+- **Premier lancement** : téléchargement des images + build → peut prendre plusieurs minutes.  
+- **Données MySQL** : volume Docker `mysql_data` (persistant tant que tu ne le supprimes pas).
+
+Pour un guide **très détaillé** (mots de passe par défaut, erreurs fréquentes, schémas) : **[docs/GUIDE_DOCKER.md](docs/GUIDE_DOCKER.md)**.
 
 ---
 
-## 11. Résumé en une phrase
+## Développement local (sans Docker)
 
-**Tu lances Docker Desktop, tu vas dans le dossier du projet, tu tapes `docker compose up --build`, tu ouvres `http://localhost:3000`, et le reste (MySQL + API + site) est géré par les trois conteneurs.**
+### Backend
 
-Si un point bloque, note le **message d’erreur exact** et la commande que tu as tapée : c’est ce qui permet de le corriger vite.
+```bash
+cd backend
+python -m venv .venv
+# Windows :
+.\.venv\Scripts\activate
+pip install -r requirements.txt
+# SQLite par défaut ; pour MySQL, crée backend/.env avec DATABASE_URL (voir section Configuration)
+uvicorn main:app --reload --host 127.0.0.1 --port 8000
+```
+
+### Frontend
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Le **proxy Vite** envoie `/api` vers `http://127.0.0.1:8000` (voir `vite.config.ts`).  
+Depuis la racine du monorepo, **`npm run dev`** (après `npm install` à la racine) peut lancer API + Vite en parallèle si tu utilises `concurrently` (voir `package.json`).
 
 ---
 
-## 12. Publier le projet sur GitHub (dépôt public)
+## Configuration
 
-Le dépôt Git est déjà initialisé sur ta machine (branche `main`, premier commit). Il reste à **créer le dépôt sur GitHub** et à **pousser** le code.
+| Variable | Où | Description |
+|----------|-----|-------------|
+| `DATABASE_URL` | `backend/.env` ou Docker | Ex. `mysql+pymysql://user:pass@host:3306/db?charset=utf8mb4` ou `sqlite:///./stock.db` |
+| `CORS_ORIGINS` | idem | Liste d’**origines séparées par des virgules** (sans JSON). Ex. `http://localhost:5173,http://localhost:3000` |
+| `MYSQL_*`, ports | `.env` à la racine (optionnel) | Surcharge des valeurs du `docker-compose.yml` — voir **`env.docker.example`** |
 
-### Étape A — Créer le dépôt sur le site GitHub
+Ne commite **jamais** de fichiers `.env` contenant de vrais secrets (déjà ignorés par `.gitignore`).
 
-1. Va sur [https://github.com/new](https://github.com/new).
-2. **Repository name** : par ex. `gestion-stock` (évite les espaces ; le dossier local s’appelle « projet docker » mais le nom GitHub peut être autre).
-3. Choisis **Public**.
-4. **Ne coche pas** « Add a README » / « Add .gitignore » (tu as déjà du contenu local).
-5. Clique sur **Create repository**.
+---
 
-GitHub affichera une page avec des commandes : garde l’URL du dépôt, par ex. `https://github.com/TON_USER/gestion-stock.git`.
+## API
 
-### Étape B — Lier le dépôt distant et pousser
+- **Base** : préfixe `/api` pour les ressources (ex. `/api/products`, `/api/movements`).  
+- **Documentation interactive** : `GET /docs` (Swagger UI) et `GET /redoc`.  
+- **Santé** : `GET /health`.
 
-Dans un terminal, à la racine du projet (`projet docker`) :
+En production derrière nginx (Docker), la même origine sert le front et le proxy `/api`.
+
+---
+
+## Publier sur GitHub
+
+1. Crée un dépôt **vide** (sans README) sur [github.com/new](https://github.com/new), en **Public**.  
+2. En local, à la racine du projet :
 
 ```bash
-git remote add origin https://github.com/TON_USER/gestion-stock.git
+git remote add origin https://github.com/VOTRE_USER/NOM_DU_REPO.git
+git branch -M main
 git push -u origin main
 ```
 
-Remplace `TON_USER` et le nom du dépôt par les tiens. Si GitHub te demande de t’authentifier, utilise un **Personal Access Token** (paramètres GitHub → Developer settings → Tokens) à la place du mot de passe, ou connecte-toi avec **GitHub Desktop**.
+Authentification HTTPS : utiliser un [**Personal Access Token**](https://github.com/settings/tokens) (scope `repo`) ou **GitHub Desktop**.
 
-### (Optionnel) GitHub CLI plus tard
+Avec [**GitHub CLI**](https://cli.github.com/) : `gh auth login` puis par exemple  
+`gh repo create gestion-stock --public --source=. --remote=origin --push`.
 
-Si tu installes [`gh`](https://cli.github.com/) et que tu fais `gh auth login`, tu pourras créer et pousser en une commande du type :  
-`gh repo create gestion-stock --public --source=. --remote=origin --push`
-#   g e s t i o n - d e - s t o c k  
- 
+---
+
+## Guide Docker détaillé (débutant)
+
+Tout le pas à pas « comme pour un débutant » (les trois boîtes, les ports, le dépannage) est dans :
+
+**[docs/GUIDE_DOCKER.md](docs/GUIDE_DOCKER.md)**
+
+---
+
+## Licence
+
+Ce dépôt est fourni à titre d’exemple / projet personnel : précise une licence (ex. **MIT**) si tu veux une réutilisation claire par d’autres développeurs.
+
+---
+
+## Auteur
+
+Projet personnel — gestion de stock avec stack moderne (FastAPI, React, MySQL, Docker).
