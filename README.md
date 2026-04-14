@@ -174,3 +174,37 @@ npm run docker:down
 **Tu lances Docker Desktop, tu vas dans le dossier du projet, tu tapes `docker compose up --build`, tu ouvres `http://localhost:3000`, et le reste (MySQL + API + site) est géré par les trois conteneurs.**
 
 Si un point bloque, note le **message d’erreur exact** et la commande que tu as tapée : c’est ce qui permet de le corriger vite.
+
+---
+
+## 12. Publier le projet sur GitHub (dépôt public)
+
+Le dépôt Git est déjà initialisé sur ta machine (branche `main`, premier commit). Il reste à **créer le dépôt sur GitHub** et à **pousser** le code.
+
+### Étape A — Créer le dépôt sur le site GitHub
+
+1. Va sur [https://github.com/new](https://github.com/new).
+2. **Repository name** : par ex. `gestion-stock` (évite les espaces ; le dossier local s’appelle « projet docker » mais le nom GitHub peut être autre).
+3. Choisis **Public**.
+4. **Ne coche pas** « Add a README » / « Add .gitignore » (tu as déjà du contenu local).
+5. Clique sur **Create repository**.
+
+GitHub affichera une page avec des commandes : garde l’URL du dépôt, par ex. `https://github.com/TON_USER/gestion-stock.git`.
+
+### Étape B — Lier le dépôt distant et pousser
+
+Dans un terminal, à la racine du projet (`projet docker`) :
+
+```bash
+git remote add origin https://github.com/TON_USER/gestion-stock.git
+git push -u origin main
+```
+
+Remplace `TON_USER` et le nom du dépôt par les tiens. Si GitHub te demande de t’authentifier, utilise un **Personal Access Token** (paramètres GitHub → Developer settings → Tokens) à la place du mot de passe, ou connecte-toi avec **GitHub Desktop**.
+
+### (Optionnel) GitHub CLI plus tard
+
+Si tu installes [`gh`](https://cli.github.com/) et que tu fais `gh auth login`, tu pourras créer et pousser en une commande du type :  
+`gh repo create gestion-stock --public --source=. --remote=origin --push`
+#   g e s t i o n - d e - s t o c k  
+ 
